@@ -264,4 +264,10 @@ public class Worker(IOptions<EmailOptions> options, ILogger<Worker> logger, Serv
 
     record EmailMessage(string To, string Subject, string Body);
 }
+
+public class EmailOptions
+{
+    [Required]
+    public required string From { get; set; }
+}
 ```
