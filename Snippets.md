@@ -1,3 +1,59 @@
+## Mail Dev Resource
+
+```C#
+namespace Aspire.Hosting;
+
+public sealed class MailDevResource(string name) : ContainerResource(name), IResourceWithConnectionString
+{
+    internal const string SmtpEndpointName = "smtp";
+    internal const string HttpEndpointName = "http";
+
+    private EndpointReference? _smtpReference;
+
+    public EndpointReference SmtpEndpoint =>
+        _smtpReference ??= new(this, SmtpEndpointName);
+
+    public ReferenceExpression ConnectionStringExpression =>
+        ReferenceExpression.Create(
+            $"smtp://{SmtpEndpoint.Property(EndpointProperty.Host)}:{SmtpEndpoint.Property(EndpointProperty.Port)}"
+        );
+}
+
+public static class MailDevResourceBuilderExtensions
+{
+    public static IResourceBuilder<MailDevResource> AddMailDev(
+        this IDistributedApplicationBuilder builder,
+        string name,
+        int? httpPort = null,
+        int? smtpPort = null)
+    {
+        var resource = new MailDevResource(name);
+
+        return builder.AddResource(resource)
+                      .WithImage(MailDevContainerImageTags.Image)
+                      .WithImageRegistry(MailDevContainerImageTags.Registry)
+                      .WithImageTag(MailDevContainerImageTags.Tag)
+                      .WithHttpEndpoint(
+                          targetPort: 1080,
+                          port: httpPort,
+                          name: MailDevResource.HttpEndpointName)
+                      .WithEndpoint(
+                          targetPort: 1025,
+                          port: smtpPort,
+                          name: MailDevResource.SmtpEndpointName);
+    }
+}
+
+internal static class MailDevContainerImageTags
+{
+    internal const string Registry = "docker.io";
+
+    internal const string Image = "maildev/maildev";
+
+    internal const string Tag = "2.0.2";
+}
+```
+
 ## Smtp Email Sender
 
 ```C#
@@ -25,6 +81,19 @@ internal sealed class SmtpEmailSender(SmtpClient client) : IEmailSender<Applicat
             IsBodyHtml = true
         };
         return client.SendMailAsync(message);
+    }
+}
+```
+
+## Service Bus Tracing
+
+```C#
+internal static class ServiceBusTracingExtensions
+{
+    public static IResourceBuilder<T> WithAzureTracing<T>(this IResourceBuilder<T> builder)
+        where T : IResourceWithEnvironment
+    {
+        return builder.WithEnvironment("AZURE_EXPERIMENTAL_ENABLE_ACTIVITY_SOURCE", "true");
     }
 }
 ```
